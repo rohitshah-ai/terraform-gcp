@@ -35,8 +35,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Git authentication
-        run: |
-    git config --global url."https://${{ secrets.MODULE_GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+        run: git config --global url."https://${{ secrets.MODULE_GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
       - name: Terraform Init
         working-directory: ./environments/dev
