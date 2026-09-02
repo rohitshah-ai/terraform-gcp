@@ -54,7 +54,7 @@ jobs:
 
       - name: Terraform Init reconfigure
         working-directory: ./environments/dev
-        run: terraform init -reconfigure
+        run: terraform init -backend=false
 
       - name: Terraform Plan
         working-directory: ./environments/dev
