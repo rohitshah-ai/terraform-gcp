@@ -52,10 +52,6 @@ jobs:
         working-directory: ./environments/dev
         run: terraform validate
 
-      - name: Terraform Init reconfigure
-        working-directory: ./environments/dev
-        run: terraform init -backend=false
-
       - name: Terraform Plan
         working-directory: ./environments/dev
         run: terraform plan
