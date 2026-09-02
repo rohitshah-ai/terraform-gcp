@@ -1,5 +1,5 @@
 module "app_service_account" {
-  source = "../../modules/iam"
+  source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//modules/iam"
 
   project_id         = var.project_id
   service_account_id = "app-prod"
@@ -13,7 +13,7 @@ module "app_service_account" {
 }
 
 module "artifact_registry" {
-  source = "../../modules/artifact-registry"
+  source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//modules/artifact-registry"
 
   project_id    = var.project_id
   location      = var.region
@@ -22,7 +22,7 @@ module "artifact_registry" {
 }
 
 module "gcs" {
-  source = "../../modules/gcs"
+  source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//modules/gcs"
 
   project_id         = var.project_id
   bucket_name        = "${var.project_id}-app-prod"
@@ -32,7 +32,7 @@ module "gcs" {
 }
 
 module "cloud_sql" {
-  source = "../../modules/cloud-sql"
+  source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//modules/cloud-sql"
 
   project_id          = var.project_id
   instance_name       = "app-prod-db"
@@ -46,7 +46,7 @@ module "cloud_sql" {
 }
 
 module "cloud_run" {
-  source = "../../modules/cloud-run"
+  source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//modules/cloud-run"
 
   project_id   = var.project_id
   service_name = "app-prod"
