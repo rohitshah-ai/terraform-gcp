@@ -33,6 +33,7 @@ jobs:
         with:
           workload_identity_provider: 'projects/988805055079/locations/global/workloadIdentityPools/githubaction-wif/providers/github-actions'
           service_account: 'github-actions-sa@ai-powered-invoice-507413.iam.gserviceaccount.com'
+          audience: 'projects/988805055079/locations/global/workloadIdentityPools/githubaction-wif/providers/github-actions'
         #   workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
         #   service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
