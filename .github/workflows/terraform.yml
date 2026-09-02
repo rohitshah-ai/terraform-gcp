@@ -16,6 +16,9 @@ jobs:
     name: Terraform
     runs-on: ubuntu-latest
 
+    environment:
+      name: dev
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,7 +42,7 @@ jobs:
 
       - name: Terraform Init
         working-directory: ./environments/dev
-        run: terraform init
+        run: terraform init -backend=false
 
       - name: Terraform Format
         working-directory: ./environments/dev
