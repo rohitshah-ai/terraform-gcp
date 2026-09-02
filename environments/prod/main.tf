@@ -34,14 +34,14 @@ module "gcs" {
 module "cloud_sql" {
   source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//modules/cloud-sql"
 
-  project_id          = var.project_id
-  instance_name       = "app-prod-db"
-  database_name       = "app"
-  region              = var.region
-  tier                = "db-custom-2-7680"
-  availability_type   = "REGIONAL"
-  deletion_protection = true
-  backup_enabled      = true
+  project_id             = var.project_id
+  instance_name          = "app-prod-db"
+  database_name          = "app"
+  region                 = var.region
+  tier                   = "db-custom-2-7680"
+  availability_type      = "REGIONAL"
+  deletion_protection    = true
+  backup_enabled         = true
   point_in_time_recovery = true
 }
 

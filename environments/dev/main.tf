@@ -1,9 +1,9 @@
 module "app_service_account" {
   source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//iam"
 
-  project_id          = var.project_id
-  service_account_id  = "app-dev"
-  display_name        = "Application Dev Service Account"
+  project_id         = var.project_id
+  service_account_id = "app-dev"
+  display_name       = "Application Dev Service Account"
 
   roles = [
     "roles/storage.objectAdmin",
@@ -24,11 +24,11 @@ module "artifact_registry" {
 module "gcs" {
   source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//gcs"
 
-  project_id           = var.project_id
-  bucket_name          = "${var.project_id}-app-dev"
-  location             = var.region
-  versioning_enabled   = true
-  lifecycle_age_days   = 30
+  project_id         = var.project_id
+  bucket_name        = "${var.project_id}-app-dev"
+  location           = var.region
+  versioning_enabled = true
+  lifecycle_age_days = 30
 }
 
 module "cloud_sql" {
@@ -45,9 +45,9 @@ module "cloud_sql" {
 module "cloud_run" {
   source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//cloud-run"
 
-  project_id       = var.project_id
-  service_name     = "app-dev"
-  location         = var.region
+  project_id   = var.project_id
+  service_name = "app-dev"
+  location     = var.region
 
   image = "${var.region}-docker.pkg.dev/${var.project_id}/app-dev/app:latest"
 

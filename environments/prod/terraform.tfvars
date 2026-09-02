@@ -1,3 +1,3 @@
-project_id = "YOUR_GCP_PROJECT_ID"
-region     = "asia-south1"
+project_id  = "YOUR_GCP_PROJECT_ID"
+region      = "asia-south1"
 environment = "prod"
