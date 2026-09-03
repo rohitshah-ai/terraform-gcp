@@ -12,6 +12,19 @@ module "app_service_account" {
   ]
 }
 
+module "vpc" {
+  source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//vpc"
+
+  project_id  = var.project_id
+  vpc_name    = var.vpc_name
+  subnet_name = var.subnet_name
+  subnet_cidr = var.subnet_cidr
+  region      = var.region
+
+  bgp_routing_mode             = var.bgp_routing_mode
+  bgp_best_path_selection_mode = var.bgp_best_path_selection_mode
+}
+
 module "artifact_registry" {
   source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//artifact-registry"
 
