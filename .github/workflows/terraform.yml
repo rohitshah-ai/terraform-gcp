@@ -44,7 +44,7 @@ jobs:
 
       - name: Terraform Init
         working-directory: ./environments/dev
-        run: terraform init -backend=false
+        run: terraform init
 
       - name: Terraform Format
         working-directory: ./environments/dev
