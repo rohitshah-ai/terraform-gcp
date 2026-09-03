@@ -11,3 +11,30 @@ variable "environment" {
   type    = string
   default = "dev"
 }
+
+variable "vpc_name" {
+  description = "VPC name"
+  type        = string
+}
+
+variable "subnet_name" {
+  description = "Subnet name"
+  type        = string
+}
+
+variable "subnet_cidr" {
+  description = "Subnet CIDR"
+  type        = string
+}
+
+variable "bgp_routing_mode" {
+  description = "BGP routing mode"
+  type        = string
+  default     = "REGIONAL"
+}
+
+variable "bgp_best_path_selection_mode" {
+  description = "BGP best path selection mode"
+  type        = string
+  default     = "LEGACY"
+}
