@@ -1,6 +1,7 @@
 environment                  = "dev"
 project_id                   = "ai-powered-invoice-507413"
 region                       = "us-central1"
+cloudsql_region              = "us-east1"
 vpc_name                     = "aip-invoice-vpc-dev"
 subnet_name                  = "aip-invoice-subnet-dev"
 subnet_cidr                  = "10.10.0.0/24"
