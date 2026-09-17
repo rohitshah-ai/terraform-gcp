@@ -6,7 +6,7 @@ variable "region" {
   type    = string
   default = "asia-south1"
 }
-variable "region_db" {
+variable "cloudsql_region" {
   type    = string
   default = "us-east1"
 }
