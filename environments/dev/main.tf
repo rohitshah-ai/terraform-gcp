@@ -69,6 +69,8 @@ module "cloud_run" {
   min_instances = 0
   max_instances = 3
 
+  deletion_protection = false
+
   environment_variables = {
     ENVIRONMENT = "dev"
   }
