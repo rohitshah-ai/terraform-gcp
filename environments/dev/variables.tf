@@ -6,6 +6,10 @@ variable "region" {
   type    = string
   default = "asia-south1"
 }
+variable "region_db" {
+  type    = string
+  default = "us-east1"
+}
 
 variable "environment" {
   type    = string
