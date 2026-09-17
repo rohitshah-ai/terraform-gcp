@@ -50,7 +50,7 @@ module "cloud_sql" {
   project_id          = var.project_id
   instance_name       = "app-dev-db"
   database_name       = "app"
-  region_db           = var.region_db
+  region              = var.region_db
   tier                = "db-perf-optimized-N-2"
   deletion_protection = false
 }
