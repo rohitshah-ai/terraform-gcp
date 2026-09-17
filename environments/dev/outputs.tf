@@ -1,6 +1,3 @@
-output "cloud_run_url" {
-  value = module.cloud_run.service_uri
-}
 
 output "gcs_bucket" {
   value = module.gcs.bucket_name
