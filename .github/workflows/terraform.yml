@@ -60,4 +60,4 @@ jobs:
 
       - name: Terraform Apply
         working-directory: ./environments/dev
-        run: terraform apply
+        run: terraform apply -auto-approve
