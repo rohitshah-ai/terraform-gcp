@@ -57,3 +57,7 @@ jobs:
       - name: Terraform Plan
         working-directory: ./environments/dev
         run: terraform plan
+
+      - name: Terraform Apply
+        working-directory: ./environments/dev
+        run: terraform apply
