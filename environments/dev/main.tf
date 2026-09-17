@@ -55,7 +55,7 @@ module "cloud_sql" {
   deletion_protection = false
 }
 
-module "cloud_run" {
+/* module "cloud_run" {
   source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//cloud-run"
 
   project_id   = var.project_id
@@ -72,4 +72,4 @@ module "cloud_run" {
   environment_variables = {
     ENVIRONMENT = "dev"
   }
-}
+}*/
