@@ -52,6 +52,7 @@ module "cloud_sql" {
   database_name       = "app"
   region              = var.region
   tier                = "db-f1-micro"
+  edition             = "ENTERPRISE"
   deletion_protection = false
 }
 
