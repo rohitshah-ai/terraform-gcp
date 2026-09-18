@@ -6,10 +6,12 @@ variable "region" {
   type    = string
   default = "asia-south1"
 }
+
 variable "cloudsql_region" {
   type    = string
-  default = "us-east1"
+  default = "asia-south1"
 }
+
 variable "database_name" {
   description = "Application database name"
   type        = string
