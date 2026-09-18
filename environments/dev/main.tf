@@ -47,8 +47,8 @@ module "gcs" {
 module "cloud_sql" {
   source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//cloud-sql"
 
-  project_id        = var.project_id
-  instance_name     = "app-dev-db"
+  project_id    = var.project_id
+  instance_name = "app-dev-db"
 
   database_name     = var.database_name
   database_username = var.database_username
