@@ -10,6 +10,23 @@ variable "cloudsql_region" {
   type    = string
   default = "us-east1"
 }
+variable "database_name" {
+  description = "Application database name"
+  type        = string
+  default     = "invoice_db"
+}
+
+variable "database_username" {
+  description = "Application database username"
+  type        = string
+  default     = "invoice_app"
+}
+
+variable "database_password" {
+  description = "Application database password"
+  type        = string
+  sensitive   = true
+}
 
 variable "environment" {
   type    = string
