@@ -49,7 +49,9 @@ module "cloud_sql" {
 
   project_id          = var.project_id
   instance_name       = "app-dev-db"
-  database_name       = "app"
+  database_name       = var.database_name
+  database_username   = var.database_username
+  database_password   = var.database_password
   cloudsql_region     = "us-central1"
   tier                = "db-f1-micro"
   edition             = "ENTERPRISE"
