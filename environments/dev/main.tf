@@ -47,32 +47,38 @@ module "gcs" {
 module "cloud_sql" {
   source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//cloud-sql"
 
-  project_id          = var.project_id
-  instance_name       = "app-dev-db"
-  database_name       = var.database_name
-  database_username   = var.database_username
-  database_password   = var.database_password
-  cloudsql_region     = "us-central1"
+  project_id        = var.project_id
+  instance_name     = "app-dev-db"
+
+  database_name     = var.database_name
+  database_username = var.database_username
+  database_password = var.database_password
+
+  cloudsql_region  = "us-central1"
+  database_version = "MYSQL_8_0"
+
   tier                = "db-f1-micro"
   edition             = "ENTERPRISE"
   deletion_protection = false
+
+  private_network = module.vpc.network_self_link
 }
 
-/* module "cloud_run" {
-  source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//cloud-run"
-
-  project_id   = var.project_id
-  service_name = "app-dev"
-  location     = var.region
-
-  image = "${var.region}-docker.pkg.dev/${var.project_id}/app-dev/app:latest"
-
-  service_account = module.app_service_account.email
-
-  min_instances = 0
-  max_instances = 3
-
-  environment_variables = {
-    ENVIRONMENT = "dev"
-  }
-}*/
+# module "cloud_run" {
+#   source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//cloud-run"
+#
+#   project_id   = var.project_id
+#   service_name = "app-dev"
+#   location     = var.region
+#
+#   image = "${var.region}-docker.pkg.dev/${var.project_id}/app-dev/app:latest"
+#
+#   service_account = module.app_service_account.email
+#
+#   min_instances = 0
+#   max_instances = 3
+#
+#   environment_variables = {
+#     ENVIRONMENT = "dev"
+#   }
+# }
