@@ -55,7 +55,7 @@ module "cloud_sql" {
   database_password = var.database_password
 
   cloudsql_region  = "us-central1"
-  database_version = "MYSQL_8_0"
+  database_version = "POSTGRES_15"
 
   tier                = "db-f1-micro"
   edition             = "ENTERPRISE"
