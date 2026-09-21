@@ -1,0 +1,424 @@
+
+name: Terraform
+
+on:
+  # Check the configured schedule every minute
+  schedule:
+    - cron: "* * * * *"
+
+  # GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Select action"
+        required: true
+        type: choice
+        options:
+          - configure
+          - apply
+          - destroy
+        default: configure
+
+      apply_time:
+        description: "Apply time (HH:MM IST)"
+        required: false
+        type: string
+        default: "12:30"
+
+      destroy_time:
+        description: "Destroy time (HH:MM IST)"
+        required: false
+        type: string
+        default: "22:00"
+
+  # Keep your existing triggers
+  pull_request:
+
+  push:
+    branches:
+      - main
+
+
+permissions:
+  contents: read
+  id-token: write
+
+
+jobs:
+
+  # ==========================================================
+  # CONFIGURE SCHEDULE FROM GITHUB UI
+  # ==========================================================
+  configure:
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'configure'
+
+    name: Configure Terraform Schedule
+
+    runs-on: self-hosted
+
+    environment:
+      name: dev
+
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+
+      # ------------------------------------------------------
+      # Convert IST to UTC
+      # ------------------------------------------------------
+      - name: Convert IST to UTC
+        id: convert
+        env:
+          APPLY_TIME: ${{ inputs.apply_time }}
+          DESTROY_TIME: ${{ inputs.destroy_time }}
+        run: |
+
+          set -e
+
+          # Validate Apply time
+          if [[ ! "$APPLY_TIME" =~ ^([01][0-9]|2[0-3]):[0-5][0-9]$ ]]; then
+            echo "Invalid Apply time: $APPLY_TIME"
+            echo "Use HH:MM format, example: 12:30"
+            exit 1
+          fi
+
+          # Validate Destroy time
+          if [[ ! "$DESTROY_TIME" =~ ^([01][0-9]|2[0-3]):[0-5][0-9]$ ]]; then
+            echo "Invalid Destroy time: $DESTROY_TIME"
+            echo "Use HH:MM format, example: 22:00"
+            exit 1
+          fi
+
+          # Convert IST → UTC
+          APPLY_UTC=$(TZ="Asia/Kolkata" date -d "today $APPLY_TIME" -u +"%H:%M")
+          DESTROY_UTC=$(TZ="Asia/Kolkata" date -d "today $DESTROY_TIME" -u +"%H:%M")
+
+          APPLY_HOUR=$(echo "$APPLY_UTC" | cut -d: -f1)
+          APPLY_MINUTE=$(echo "$APPLY_UTC" | cut -d: -f2)
+
+          DESTROY_HOUR=$(echo "$DESTROY_UTC" | cut -d: -f1)
+          DESTROY_MINUTE=$(echo "$DESTROY_UTC" | cut -d: -f2)
+
+          echo "======================================"
+          echo "Terraform Schedule"
+          echo "======================================"
+          echo "Apply IST:    $APPLY_TIME"
+          echo "Apply UTC:    $APPLY_UTC"
+          echo ""
+          echo "Destroy IST:  $DESTROY_TIME"
+          echo "Destroy UTC:  $DESTROY_UTC"
+          echo "======================================"
+
+          echo "apply_hour=$APPLY_HOUR" >> "$GITHUB_OUTPUT"
+          echo "apply_minute=$APPLY_MINUTE" >> "$GITHUB_OUTPUT"
+
+          echo "destroy_hour=$DESTROY_HOUR" >> "$GITHUB_OUTPUT"
+          echo "destroy_minute=$DESTROY_MINUTE" >> "$GITHUB_OUTPUT"
+
+
+      # ------------------------------------------------------
+      # Save Apply schedule
+      # ------------------------------------------------------
+      - name: Save Apply Schedule
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPLY_HOUR: ${{ steps.convert.outputs.apply_hour }}
+          APPLY_MINUTE: ${{ steps.convert.outputs.apply_minute }}
+        run: |
+
+          gh variable set TERRAFORM_APPLY_HOUR \
+            --body "$APPLY_HOUR"
+
+          gh variable set TERRAFORM_APPLY_MINUTE \
+            --body "$APPLY_MINUTE"
+
+
+      # ------------------------------------------------------
+      # Save Destroy schedule
+      # ------------------------------------------------------
+      - name: Save Destroy Schedule
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DESTROY_HOUR: ${{ steps.convert.outputs.destroy_hour }}
+          DESTROY_MINUTE: ${{ steps.convert.outputs.destroy_minute }}
+        run: |
+
+          gh variable set TERRAFORM_DESTROY_HOUR \
+            --body "$DESTROY_HOUR"
+
+          gh variable set TERRAFORM_DESTROY_MINUTE \
+            --body "$DESTROY_MINUTE"
+
+
+      - name: Schedule Saved
+        run: |
+
+          echo "======================================"
+          echo "Schedule saved successfully"
+          echo "======================================"
+
+          echo "Apply UTC:"
+          echo "${{ steps.convert.outputs.apply_hour }}:${{ steps.convert.outputs.apply_minute }}"
+
+          echo ""
+
+          echo "Destroy UTC:"
+          echo "${{ steps.convert.outputs.destroy_hour }}:${{ steps.convert.outputs.destroy_minute }}"
+
+          echo "======================================"
+
+
+  # ==========================================================
+  # TERRAFORM JOB
+  # ==========================================================
+  terraform:
+
+    name: Terraform
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: dev
+
+    env:
+      TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
+
+
+    # Run for:
+    # 1. Scheduled execution
+    # 2. Manual Apply
+    # 3. Manual Destroy
+    # 4. Existing push / pull request
+    if: |
+      github.event_name == 'schedule' ||
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' ||
+      (
+        github.event_name == 'workflow_dispatch' &&
+        (
+          inputs.action == 'apply' ||
+          inputs.action == 'destroy'
+        )
+      )
+
+
+    steps:
+
+      # ======================================================
+      # CHECKOUT
+      # ======================================================
+      - name: Checkout
+        uses: actions/checkout@v4
+
+
+      # ======================================================
+      # GET SAVED SCHEDULE
+      # ======================================================
+      - name: Get Terraform Schedule
+        id: schedule
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+
+          APPLY_HOUR=$(gh variable get TERRAFORM_APPLY_HOUR)
+          APPLY_MINUTE=$(gh variable get TERRAFORM_APPLY_MINUTE)
+
+          DESTROY_HOUR=$(gh variable get TERRAFORM_DESTROY_HOUR)
+          DESTROY_MINUTE=$(gh variable get TERRAFORM_DESTROY_MINUTE)
+
+          echo "Apply UTC:   $APPLY_HOUR:$APPLY_MINUTE"
+          echo "Destroy UTC: $DESTROY_HOUR:$DESTROY_MINUTE"
+
+          echo "apply_hour=$APPLY_HOUR" >> "$GITHUB_OUTPUT"
+          echo "apply_minute=$APPLY_MINUTE" >> "$GITHUB_OUTPUT"
+
+          echo "destroy_hour=$DESTROY_HOUR" >> "$GITHUB_OUTPUT"
+          echo "destroy_minute=$DESTROY_MINUTE" >> "$GITHUB_OUTPUT"
+
+
+      # ======================================================
+      # DETERMINE ACTION
+      # ======================================================
+      - name: Determine Terraform Action
+        id: action
+        run: |
+
+          ACTION="none"
+
+          # --------------------------------------------------
+          # Scheduled execution
+          # --------------------------------------------------
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+
+            CURRENT_HOUR=$(date -u +"%H")
+            CURRENT_MINUTE=$(date -u +"%M")
+
+            CURRENT_HOUR=$((10#$CURRENT_HOUR))
+            CURRENT_MINUTE=$((10#$CURRENT_MINUTE))
+
+            APPLY_HOUR=$((10#${{ steps.schedule.outputs.apply_hour }}))
+            APPLY_MINUTE=$((10#${{ steps.schedule.outputs.apply_minute }}))
+
+            DESTROY_HOUR=$((10#${{ steps.schedule.outputs.destroy_hour }}))
+            DESTROY_MINUTE=$((10#${{ steps.schedule.outputs.destroy_minute }}))
+
+
+            if [[ "$CURRENT_HOUR" -eq "$APPLY_HOUR" &&
+                  "$CURRENT_MINUTE" -eq "$APPLY_MINUTE" ]]; then
+
+              ACTION="apply"
+
+            elif [[ "$CURRENT_HOUR" -eq "$DESTROY_HOUR" &&
+                    "$CURRENT_MINUTE" -eq "$DESTROY_MINUTE" ]]; then
+
+              ACTION="destroy"
+
+            fi
+
+          fi
+
+
+          # --------------------------------------------------
+          # Manual execution
+          # --------------------------------------------------
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+
+            if [[ "${{ inputs.action }}" == "apply" ]]; then
+              ACTION="apply"
+            fi
+
+            if [[ "${{ inputs.action }}" == "destroy" ]]; then
+              ACTION="destroy"
+            fi
+
+          fi
+
+
+          # --------------------------------------------------
+          # Existing PUSH / PR behavior
+          # --------------------------------------------------
+          if [[ "${{ github.event_name }}" == "push" ||
+                "${{ github.event_name }}" == "pull_request" ]]; then
+
+            ACTION="plan"
+
+          fi
+
+
+          echo "Terraform action: $ACTION"
+
+          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
+
+
+      # ======================================================
+      # NO ACTION
+      # ======================================================
+      - name: No Scheduled Action
+        if: steps.action.outputs.action == 'none'
+        run: |
+
+          echo "No Terraform action scheduled for this minute."
+          echo "Exiting."
+
+
+      # ======================================================
+      # TERRAFORM SETUP
+      # ======================================================
+      - name: Setup Terraform
+        if: steps.action.outputs.action != 'none'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+
+      # ======================================================
+      # GCP AUTHENTICATION
+      # ======================================================
+      - name: Authenticate to GCP
+        if: steps.action.outputs.action != 'none'
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: 'projects/988805055079/locations/global/workloadIdentityPools/githubaction-wif/providers/github-actions'
+          service_account: 'github-actions-sa@ai-powered-invoice-507413.iam.gserviceaccount.com'
+
+
+      # ======================================================
+      # SETUP GCLOUD
+      # ======================================================
+      - name: Setup gcloud
+        if: steps.action.outputs.action != 'none'
+        uses: google-github-actions/setup-gcloud@v3
+
+
+      # ======================================================
+      # GITHUB MODULE AUTHENTICATION
+      # ======================================================
+      - name: Configure Git authentication
+        if: steps.action.outputs.action != 'none'
+        run: |
+          git config --global \
+            url."https://${{ secrets.MODULE_GITHUB_TOKEN }}@github.com/".insteadOf \
+            "https://github.com/"
+
+
+      # ======================================================
+      # TERRAFORM FORMAT
+      # ======================================================
+      - name: Terraform Format
+        if: steps.action.outputs.action != 'none'
+        working-directory: ./environments/dev
+        run: terraform fmt -check
+
+
+      # ======================================================
+      # TERRAFORM INIT
+      # ======================================================
+      - name: Terraform Init
+        if: steps.action.outputs.action != 'none'
+        working-directory: ./environments/dev
+        run: terraform init -upgrade
+
+
+      # ======================================================
+      # TERRAFORM VALIDATE
+      # ======================================================
+      - name: Terraform Validate
+        if: steps.action.outputs.action != 'none'
+        working-directory: ./environments/dev
+        run: terraform validate
+
+
+      # ======================================================
+      # TERRAFORM PLAN
+      # ======================================================
+      - name: Terraform Plan
+        if: |
+          steps.action.outputs.action == 'plan' ||
+          steps.action.outputs.action == 'apply'
+        working-directory: ./environments/dev
+        run: terraform plan
+
+
+      # ======================================================
+      # TERRAFORM APPLY
+      # ======================================================
+      - name: Terraform Apply
+        if: steps.action.outputs.action == 'apply'
+        working-directory: ./environments/dev
+        run: terraform apply -auto-approve
+
+
+      # ======================================================
+      # TERRAFORM DESTROY
+      # ======================================================
+      - name: Terraform Destroy
+        if: steps.action.outputs.action == 'destroy'
+        working-directory: ./environments/dev
+        run: terraform destroy -auto-approve
