@@ -62,6 +62,10 @@ module "cloud_sql" {
   deletion_protection = false
 
   private_network = module.vpc.network_self_link
+
+  depends_on = [
+    module.vpc
+  ]
 }
 
 # module "cloud_run" {
