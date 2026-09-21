@@ -2,13 +2,14 @@
 name: automate-Terraform
 
 on:
-  # Check the configured schedule every minute
+  # Check the schedule every minute
   schedule:
     - cron: "* * * * *"
 
-  # GitHub Actions UI
+  # Manual UI
   workflow_dispatch:
     inputs:
+
       action:
         description: "Select action"
         required: true
@@ -21,22 +22,15 @@ on:
 
       apply_time:
         description: "Apply time (HH:MM IST)"
-        required: false
+        required: true
         type: string
         default: "12:30"
 
       destroy_time:
         description: "Destroy time (HH:MM IST)"
-        required: false
+        required: true
         type: string
         default: "22:00"
-
-  # Keep your existing triggers
-  pull_request:
-
-  push:
-    branches:
-      - main
 
 
 permissions:
@@ -47,14 +41,17 @@ permissions:
 jobs:
 
   # ==========================================================
-  # CONFIGURE SCHEDULE FROM GITHUB UI
+  # CONFIGURE SCHEDULE
   # ==========================================================
   configure:
-    if: github.event_name == 'workflow_dispatch' && inputs.action == 'configure'
 
     name: Configure Terraform Schedule
 
-    runs-on: self-hosted
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      inputs.action == 'configure'
+
+    runs-on: ubuntu-latest
 
     environment:
       name: dev
@@ -69,9 +66,9 @@ jobs:
         uses: actions/checkout@v4
 
 
-      # ------------------------------------------------------
-      # Convert IST to UTC
-      # ------------------------------------------------------
+      # ======================================================
+      # CONVERT IST TO UTC
+      # ======================================================
       - name: Convert IST to UTC
         id: convert
         env:
@@ -81,38 +78,42 @@ jobs:
 
           set -e
 
+          echo "Apply time:   $APPLY_TIME IST"
+          echo "Destroy time: $DESTROY_TIME IST"
+
           # Validate Apply time
           if [[ ! "$APPLY_TIME" =~ ^([01][0-9]|2[0-3]):[0-5][0-9]$ ]]; then
-            echo "Invalid Apply time: $APPLY_TIME"
-            echo "Use HH:MM format, example: 12:30"
+            echo "ERROR: Invalid Apply time"
+            echo "Use HH:MM format. Example: 12:30"
             exit 1
           fi
 
           # Validate Destroy time
           if [[ ! "$DESTROY_TIME" =~ ^([01][0-9]|2[0-3]):[0-5][0-9]$ ]]; then
-            echo "Invalid Destroy time: $DESTROY_TIME"
-            echo "Use HH:MM format, example: 22:00"
+            echo "ERROR: Invalid Destroy time"
+            echo "Use HH:MM format. Example: 22:00"
             exit 1
           fi
 
-          # Convert IST → UTC
+          # Convert IST -> UTC
           APPLY_UTC=$(TZ="Asia/Kolkata" date -d "today $APPLY_TIME" -u +"%H:%M")
           DESTROY_UTC=$(TZ="Asia/Kolkata" date -d "today $DESTROY_TIME" -u +"%H:%M")
 
-          APPLY_HOUR=$(echo "$APPLY_UTC" | cut -d: -f1)
-          APPLY_MINUTE=$(echo "$APPLY_UTC" | cut -d: -f2)
+          APPLY_HOUR="${APPLY_UTC:0:2}"
+          APPLY_MINUTE="${APPLY_UTC:3:2}"
 
-          DESTROY_HOUR=$(echo "$DESTROY_UTC" | cut -d: -f1)
-          DESTROY_MINUTE=$(echo "$DESTROY_UTC" | cut -d: -f2)
+          DESTROY_HOUR="${DESTROY_UTC:0:2}"
+          DESTROY_MINUTE="${DESTROY_UTC:3:2}"
 
           echo "======================================"
           echo "Terraform Schedule"
           echo "======================================"
-          echo "Apply IST:    $APPLY_TIME"
-          echo "Apply UTC:    $APPLY_UTC"
+          echo "Apply IST   : $APPLY_TIME"
+          echo "Apply UTC   : $APPLY_UTC"
           echo ""
-          echo "Destroy IST:  $DESTROY_TIME"
-          echo "Destroy UTC:  $DESTROY_UTC"
+          echo "Destroy IST : $DESTROY_TIME"
+          echo "Destroy UTC : $DESTROY_UTC"
+          echo "Days        : Monday-Friday"
           echo "======================================"
 
           echo "apply_hour=$APPLY_HOUR" >> "$GITHUB_OUTPUT"
@@ -122,9 +123,9 @@ jobs:
           echo "destroy_minute=$DESTROY_MINUTE" >> "$GITHUB_OUTPUT"
 
 
-      # ------------------------------------------------------
-      # Save Apply schedule
-      # ------------------------------------------------------
+      # ======================================================
+      # SAVE APPLY SCHEDULE
+      # ======================================================
       - name: Save Apply Schedule
         env:
           GH_TOKEN: ${{ github.token }}
@@ -139,9 +140,9 @@ jobs:
             --body "$APPLY_MINUTE"
 
 
-      # ------------------------------------------------------
-      # Save Destroy schedule
-      # ------------------------------------------------------
+      # ======================================================
+      # SAVE DESTROY SCHEDULE
+      # ======================================================
       - name: Save Destroy Schedule
         env:
           GH_TOKEN: ${{ github.token }}
@@ -156,6 +157,9 @@ jobs:
             --body "$DESTROY_MINUTE"
 
 
+      # ======================================================
+      # CONFIRM
+      # ======================================================
       - name: Schedule Saved
         run: |
 
@@ -171,11 +175,15 @@ jobs:
           echo "Destroy UTC:"
           echo "${{ steps.convert.outputs.destroy_hour }}:${{ steps.convert.outputs.destroy_minute }}"
 
+          echo ""
+
+          echo "Schedule days: Monday-Friday"
+
           echo "======================================"
 
 
   # ==========================================================
-  # TERRAFORM JOB
+  # TERRAFORM
   # ==========================================================
   terraform:
 
@@ -189,16 +197,8 @@ jobs:
     env:
       TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
 
-
-    # Run for:
-    # 1. Scheduled execution
-    # 2. Manual Apply
-    # 3. Manual Destroy
-    # 4. Existing push / pull request
     if: |
       github.event_name == 'schedule' ||
-      github.event_name == 'push' ||
-      github.event_name == 'pull_request' ||
       (
         github.event_name == 'workflow_dispatch' &&
         (
@@ -206,7 +206,6 @@ jobs:
           inputs.action == 'destroy'
         )
       )
-
 
     steps:
 
@@ -252,42 +251,62 @@ jobs:
 
           ACTION="none"
 
-          # --------------------------------------------------
-          # Scheduled execution
-          # --------------------------------------------------
+          # ==================================================
+          # SCHEDULED RUN
+          # ==================================================
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
 
-            CURRENT_HOUR=$(date -u +"%H")
-            CURRENT_MINUTE=$(date -u +"%M")
+            # GitHub runner time is UTC.
+            # Monday=1 ... Sunday=7
+            DAY=$(date -u +"%u")
 
-            CURRENT_HOUR=$((10#$CURRENT_HOUR))
-            CURRENT_MINUTE=$((10#$CURRENT_MINUTE))
+            echo "UTC day: $DAY"
 
-            APPLY_HOUR=$((10#${{ steps.schedule.outputs.apply_hour }}))
-            APPLY_MINUTE=$((10#${{ steps.schedule.outputs.apply_minute }}))
+            # Monday-Friday only
+            if [[ "$DAY" -ge 1 && "$DAY" -le 5 ]]; then
 
-            DESTROY_HOUR=$((10#${{ steps.schedule.outputs.destroy_hour }}))
-            DESTROY_MINUTE=$((10#${{ steps.schedule.outputs.destroy_minute }}))
+              CURRENT_HOUR=$(date -u +"%H")
+              CURRENT_MINUTE=$(date -u +"%M")
 
+              CURRENT_HOUR=$((10#$CURRENT_HOUR))
+              CURRENT_MINUTE=$((10#$CURRENT_MINUTE))
 
-            if [[ "$CURRENT_HOUR" -eq "$APPLY_HOUR" &&
-                  "$CURRENT_MINUTE" -eq "$APPLY_MINUTE" ]]; then
+              APPLY_HOUR=$((10#${{ steps.schedule.outputs.apply_hour }}))
+              APPLY_MINUTE=$((10#${{ steps.schedule.outputs.apply_minute }}))
 
-              ACTION="apply"
+              DESTROY_HOUR=$((10#${{ steps.schedule.outputs.destroy_hour }}))
+              DESTROY_MINUTE=$((10#${{ steps.schedule.outputs.destroy_minute }}))
 
-            elif [[ "$CURRENT_HOUR" -eq "$DESTROY_HOUR" &&
-                    "$CURRENT_MINUTE" -eq "$DESTROY_MINUTE" ]]; then
+              echo "Current UTC: $CURRENT_HOUR:$CURRENT_MINUTE"
+              echo "Apply UTC:   $APPLY_HOUR:$APPLY_MINUTE"
+              echo "Destroy UTC: $DESTROY_HOUR:$DESTROY_MINUTE"
 
-              ACTION="destroy"
+              # APPLY
+              if [[ "$CURRENT_HOUR" -eq "$APPLY_HOUR" &&
+                    "$CURRENT_MINUTE" -eq "$APPLY_MINUTE" ]]; then
+
+                ACTION="apply"
+
+              # DESTROY
+              elif [[ "$CURRENT_HOUR" -eq "$DESTROY_HOUR" &&
+                      "$CURRENT_MINUTE" -eq "$DESTROY_MINUTE" ]]; then
+
+                ACTION="destroy"
+
+              fi
+
+            else
+
+              echo "Weekend - no Terraform action."
 
             fi
 
           fi
 
 
-          # --------------------------------------------------
-          # Manual execution
-          # --------------------------------------------------
+          # ==================================================
+          # MANUAL RUN
+          # ==================================================
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
 
             if [[ "${{ inputs.action }}" == "apply" ]]; then
@@ -301,18 +320,9 @@ jobs:
           fi
 
 
-          # --------------------------------------------------
-          # Existing PUSH / PR behavior
-          # --------------------------------------------------
-          if [[ "${{ github.event_name }}" == "push" ||
-                "${{ github.event_name }}" == "pull_request" ]]; then
-
-            ACTION="plan"
-
-          fi
-
-
+          echo "======================================"
           echo "Terraform action: $ACTION"
+          echo "======================================"
 
           echo "action=$ACTION" >> "$GITHUB_OUTPUT"
 
@@ -320,16 +330,16 @@ jobs:
       # ======================================================
       # NO ACTION
       # ======================================================
-      - name: No Scheduled Action
+      - name: No Action
         if: steps.action.outputs.action == 'none'
         run: |
 
-          echo "No Terraform action scheduled for this minute."
-          echo "Exiting."
+          echo "No Terraform action scheduled."
+          echo "Nothing to do."
 
 
       # ======================================================
-      # TERRAFORM SETUP
+      # SETUP TERRAFORM
       # ======================================================
       - name: Setup Terraform
         if: steps.action.outputs.action != 'none'
@@ -358,11 +368,12 @@ jobs:
 
 
       # ======================================================
-      # GITHUB MODULE AUTHENTICATION
+      # PRIVATE TERRAFORM MODULE AUTHENTICATION
       # ======================================================
       - name: Configure Git authentication
         if: steps.action.outputs.action != 'none'
         run: |
+
           git config --global \
             url."https://${{ secrets.MODULE_GITHUB_TOKEN }}@github.com/".insteadOf \
             "https://github.com/"
@@ -400,7 +411,6 @@ jobs:
       # ======================================================
       - name: Terraform Plan
         if: |
-          steps.action.outputs.action == 'plan' ||
           steps.action.outputs.action == 'apply'
         working-directory: ./environments/dev
         run: terraform plan
@@ -422,3 +432,4 @@ jobs:
         if: steps.action.outputs.action == 'destroy'
         working-directory: ./environments/dev
         run: terraform destroy -auto-approve
+
