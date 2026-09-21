@@ -191,8 +191,6 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    environment:
-      name: dev
 
     env:
       TF_VAR_database_password: ${{ secrets.DATABASE_PASSWORD }}
