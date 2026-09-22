@@ -202,7 +202,7 @@ jobs:
       - name: Save Apply Schedule
 
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GH_VARIABLE_TOKEN }}
 
           APPLY_HOUR: ${{ steps.convert.outputs.apply_hour }}
           APPLY_MINUTE: ${{ steps.convert.outputs.apply_minute }}
