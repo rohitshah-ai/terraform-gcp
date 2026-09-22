@@ -1,5 +1,9 @@
 
 name: automate-Terraform
+permissions:
+  contents: read
+  id-token: write
+  actions: write
 
 on:
   # Check the schedule every minute
@@ -33,10 +37,7 @@ on:
         default: "22:00"
 
 
-permissions:
-  contents: read
-  id-token: write
-  actions: write
+
 
 
 jobs:
@@ -218,6 +219,7 @@ jobs:
       # ======================================================
       # GET SAVED SCHEDULE
       # ======================================================
+ 
       - name: Get Terraform Schedule
         id: schedule
         if: github.event_name == 'schedule'
