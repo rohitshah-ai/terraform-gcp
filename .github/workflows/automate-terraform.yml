@@ -166,7 +166,12 @@ jobs:
           echo "======================================"
 
           terraform plan -out=tfplan
+
           terraform apply -auto-approve tfplan
+
+          echo "======================================"
+          echo "Terraform Apply Completed"
+          echo "======================================"
 
       # ====================================================
       # DELETE CLOUD RUN SERVICES
@@ -250,8 +255,20 @@ jobs:
 
         working-directory: ./environments/dev
 
+        shell: bash
+
         run: |
           set -euo pipefail
+
+          echo "======================================"
+          echo "Removing Cloud SQL user/database from Terraform state"
+          echo "======================================"
+
+          terraform state rm \
+            'module.cloud_sql.google_sql_user.user' || true
+
+          terraform state rm \
+            'module.cloud_sql.google_sql_database.this' || true
 
           echo "======================================"
           echo "Terraform Destroy"
