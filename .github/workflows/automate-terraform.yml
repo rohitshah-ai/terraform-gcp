@@ -62,6 +62,7 @@ jobs:
           MANUAL_ACTION: ${{ inputs.action }}
 
         shell: bash
+
         run: |
           set -euo pipefail
 
@@ -85,6 +86,7 @@ jobs:
       # ====================================================
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+
         with:
           terraform_version: 1.9.8
 
@@ -93,6 +95,7 @@ jobs:
       # ====================================================
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v3
+
         with:
           workload_identity_provider: >-
             projects/988805055079/locations/global/workloadIdentityPools/githubaction-wif/providers/github-actions
@@ -125,6 +128,7 @@ jobs:
       # ====================================================
       - name: Terraform Format
         working-directory: ./environments/dev
+
         run: |
           terraform fmt -check
 
@@ -133,6 +137,7 @@ jobs:
       # ====================================================
       - name: Terraform Init
         working-directory: ./environments/dev
+
         run: |
           terraform init -upgrade
 
@@ -141,6 +146,7 @@ jobs:
       # ====================================================
       - name: Terraform Validate
         working-directory: ./environments/dev
+
         run: |
           terraform validate
 
@@ -149,17 +155,112 @@ jobs:
       # ====================================================
       - name: Terraform Apply
         if: steps.action.outputs.action == 'apply'
+
         working-directory: ./environments/dev
+
         run: |
+          set -euo pipefail
+
+          echo "======================================"
+          echo "Terraform Apply"
+          echo "======================================"
+
           terraform plan -out=tfplan
           terraform apply -auto-approve tfplan
 
       # ====================================================
+      # DELETE CLOUD RUN SERVICES
+      #
+      # ONLY RUNS DURING DESTROY
+      # ====================================================
+      - name: Delete Cloud Run Services
+        if: steps.action.outputs.action == 'destroy'
+
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          PROJECT_ID="ai-powered-invoice-507413"
+          REGION="us-central1"
+
+          echo "======================================"
+          echo "Deleting Cloud Run Services"
+          echo "======================================"
+
+          for SERVICE in invoice-ui invoice-processor expense-service; do
+
+            echo ""
+            echo "Checking Cloud Run service: $SERVICE"
+
+            if gcloud run services describe "$SERVICE" \
+              --region="$REGION" \
+              --project="$PROJECT_ID" \
+              >/dev/null 2>&1; then
+
+              echo "Deleting Cloud Run service: $SERVICE"
+
+              gcloud run services delete "$SERVICE" \
+                --region="$REGION" \
+                --project="$PROJECT_ID" \
+                --quiet
+
+              echo "Deleted: $SERVICE"
+
+            else
+
+              echo "Service does not exist: $SERVICE"
+
+            fi
+
+          done
+
+          echo ""
+          echo "======================================"
+          echo "Cloud Run cleanup completed"
+          echo "======================================"
+
+      # ====================================================
+      # WAIT FOR CLOUD RUN NETWORKING RELEASE
+      #
+      # Gives Google time to release:
+      # serverless-ipv4-cloudrun-*
+      # ====================================================
+      - name: Wait for Cloud Run Networking Release
+        if: steps.action.outputs.action == 'destroy'
+
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          echo "Waiting for Cloud Run serverless networking cleanup..."
+
+          sleep 30
+
+          echo "Cloud Run cleanup wait completed."
+
+      # ====================================================
       # TERRAFORM DESTROY
+      #
+      # RUNS ONLY AFTER CLOUD RUN IS DELETED
       # ====================================================
       - name: Terraform Destroy
         if: steps.action.outputs.action == 'destroy'
+
         working-directory: ./environments/dev
+
         run: |
+          set -euo pipefail
+
+          echo "======================================"
+          echo "Terraform Destroy"
+          echo "======================================"
+
           terraform plan -destroy -out=destroy.tfplan
+
           terraform apply -auto-approve destroy.tfplan
+
+          echo "======================================"
+          echo "Terraform Destroy Completed"
+          echo "======================================"
