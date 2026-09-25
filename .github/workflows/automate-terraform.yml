@@ -1,3 +1,4 @@
+```yaml
 name: automate-Terraform
 
 # ==========================================================
@@ -86,7 +87,6 @@ jobs:
       # ====================================================
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
-
         with:
           terraform_version: 1.9.8
 
@@ -95,7 +95,6 @@ jobs:
       # ====================================================
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v3
-
         with:
           workload_identity_provider: >-
             projects/988805055079/locations/global/workloadIdentityPools/githubaction-wif/providers/github-actions
@@ -171,6 +170,47 @@ jobs:
 
           echo "======================================"
           echo "Terraform Apply Completed"
+          echo "======================================"
+
+      # ====================================================
+      # START CLOUD RUN DEPLOYMENT
+      #
+      # Runs ONLY after successful Terraform Apply
+      #
+      # Triggers:
+      # Himanshu-Private/invoice-processing
+      # .github/workflows/deploy.yml
+      # ====================================================
+      - name: Start Cloud Run Deployment
+        if: steps.action.outputs.action == 'apply'
+
+        env:
+          GH_TOKEN: ${{ secrets.INVOICE_PROCESSING_GH_TOKEN }}
+
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          echo "======================================"
+          echo "Starting Cloud Run Deployment"
+          echo "======================================"
+
+          echo "Repository:"
+          echo "Himanshu-Private/invoice-processing"
+
+          echo "Workflow:"
+          echo "deploy.yml"
+
+          echo "Branch:"
+          echo "main"
+
+          gh workflow run deploy.yml \
+            --repo Himanshu-Private/invoice-processing \
+            --ref main
+
+          echo "======================================"
+          echo "Cloud Run Deployment Workflow Started"
           echo "======================================"
 
       # ====================================================
@@ -281,3 +321,4 @@ jobs:
           echo "======================================"
           echo "Terraform Destroy Completed"
           echo "======================================"
+```
