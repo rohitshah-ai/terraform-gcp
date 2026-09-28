@@ -24,10 +24,9 @@ variable "database_username" {
   default     = "invoice_app"
 }
 
-variable "database_password" {
-  description = "Application database password"
+variable "database_password_secret_id" {
+  description = "Secret Manager secret ID containing database password"
   type        = string
-  sensitive   = true
 }
 
 variable "environment" {
