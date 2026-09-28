@@ -44,6 +44,15 @@ module "gcs" {
   lifecycle_age_days = 30
 }
 
+# Store Cloud SQL password in Secret Manager
+module "db_password_secret" {
+  source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//secret-manager"
+
+  project_id  = var.project_id
+  secret_id   = "app-dev-db-password"
+  secret_data = var.database_password
+}
+
 module "cloud_sql" {
   source = "git::https://github.com/rohitshah-ai/terraform-gcp-module.git//cloud-sql"
 
@@ -52,19 +61,28 @@ module "cloud_sql" {
 
   database_name     = var.database_name
   database_username = var.database_username
-  database_password = var.database_password
+
+  # Secret Manager integration
+  database_password_secret_id = module.db_password_secret.secret_id
 
   cloudsql_region  = "us-central1"
   database_version = "POSTGRES_16"
 
-  tier                = "db-f1-micro"
-  edition             = "ENTERPRISE"
-  deletion_protection = false
+  tier              = "db-f1-micro"
+  edition           = "ENTERPRISE"
+  availability_type = "ZONAL"
 
-  private_network = module.vpc.network_self_link
+  disk_size = 20
+
+  backup_enabled         = true
+  point_in_time_recovery = true
+
+  private_network      = module.vpc.network_self_link
+  deletion_protection  = false
 
   depends_on = [
-    module.vpc
+    module.vpc,
+    module.db_password_secret
   ]
 }
 
