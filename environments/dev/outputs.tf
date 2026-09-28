@@ -30,3 +30,7 @@ output "subnet_id" {
 output "subnet_cidr" {
   value = module.vpc.subnet_cidr
 }
+
+output "secret_id" {
+  value = google_secret_manager_secret.this.secret_id
+}
