@@ -32,5 +32,5 @@ output "subnet_cidr" {
 }
 
 output "secret_id" {
-  value = google_secret_manager_secret.this.secret_id
+  value = module.db_password_secret.secret_id
 }
