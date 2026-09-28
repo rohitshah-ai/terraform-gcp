@@ -77,8 +77,8 @@ module "cloud_sql" {
   backup_enabled         = true
   point_in_time_recovery = true
 
-  private_network      = module.vpc.network_self_link
-  deletion_protection  = false
+  private_network     = module.vpc.network_self_link
+  deletion_protection = false
 
   depends_on = [
     module.vpc,
